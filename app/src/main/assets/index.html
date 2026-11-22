@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Мой график: сутки через трое</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f3f5f8;--card:#fff;--text:#1b2430;--muted:#64707f;--line:#dfe4ea;
+--work:#fbd0d0;--work-t:#8f1d1d;--rest:#d5f1dd;--rest-t:#1a6b36;--hol:#d12a2a;--sel:#2563eb;--today:#f59e0b;--yel:#c79100;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10151c;--card:#1a212b;--text:#eef2f7;--muted:#93a0b0;--line:#2c3643;
+--work:#5a2326;--work-t:#ffc9c9;--rest:#1d4a2e;--rest-t:#b8f0ca;--hol:#ff7b7b;--sel:#6c9bff;--today:#fbbf24;--yel:#facc15;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#10151c;--card:#1a212b;--text:#eef2f7;--muted:#93a0b0;--line:#2c3643;
+--work:#5a2326;--work-t:#ffc9c9;--rest:#1d4a2e;--rest-t:#b8f0ca;--hol:#ff7b7b;--sel:#6c9bff;--today:#fbbf24;--yel:#facc15;color-scheme:dark}
+*,*:before,*:after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+main{max-width:480px;margin:0 auto;padding:12px;display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px}
+h2{margin:0 0 8px;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+/* результат */
+#status{cursor:pointer;border-radius:16px;padding:16px 12px;text-align:center;font-weight:800;font-size:26px;line-height:1.15}
+#status small{display:block;font-size:15px;font-weight:600;margin-top:4px;opacity:.85}
+#status.work{background:#2563eb;color:#fff}
+#status.rest{background:#2e9e57;color:#fff}
+#status.extra{background:#2563eb;color:#fff}
+#dt{font-size:22px;font-weight:700;margin:2px 0 2px;text-align:center}
+#wd{color:var(--muted);margin-bottom:10px;text-align:center;font-size:17px}
+.row{display:flex;gap:8px;align-items:flex-start;margin-top:10px}
+.row b{min-width:92px;color:var(--muted);font-weight:600}
+/* ввод даты */
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:3px}
+select,button{font:inherit;color:var(--text)}
+select{width:100%;height:48px;padding:0 8px;border:1px solid var(--line);border-radius:12px;background:var(--bg);font-size:17px}
+.btn{height:48px;border:1px solid var(--line);border-radius:12px;background:var(--bg);padding:0 14px;cursor:pointer;font-weight:600}
+.btn:active{transform:scale(.97)}
+.btn.main{background:var(--sel);border-color:var(--sel);color:#fff;width:100%;margin-top:10px}
+/* календарь */
+.nav{display:flex;align-items:center;gap:4px;margin-bottom:8px}
+.nav .ttl{flex:1;min-width:0;text-align:center;font-size:clamp(14px,4.8vw,18px);font-weight:700}
+.nav .btn{width:42px;flex:none;padding:0;font-size:20px}
+.gwrap{position:relative;perspective:1100px;overflow:hidden;padding:8px;margin:-8px}
+.grid.snap{position:absolute;left:8px;right:8px;top:8px;background:var(--card);pointer-events:none;backface-visibility:hidden;z-index:2;box-shadow:0 0 22px rgba(0,0,0,.28)}
+@keyframes flipN{from{transform:rotateY(0)}to{transform:rotateY(-100deg);opacity:.3}}
+@keyframes flipP{from{transform:rotateY(0)}to{transform:rotateY(100deg);opacity:.3}}
+.grid.snap.fn{transform-origin:left center;animation:flipN .5s ease-in forwards}
+.grid.snap.fp{transform-origin:right center;animation:flipP .5s ease-in forwards}
+@media (prefers-reduced-motion:reduce){.grid.snap{display:none}}
+.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;touch-action:pan-y}
+.hd{text-align:center;font-size:12px;color:var(--muted);padding:2px 0}
+.hd.we{color:var(--yel);font-weight:700}
+.c-hol{color:var(--hol)!important;font-weight:700}
+.c-we{color:var(--yel)!important;font-weight:700}
+.cell{min-width:0;overflow:hidden;line-height:1;aspect-ratio:1/1.05;border:3px solid transparent;border-radius:10px;padding:0;display:flex;flex-direction:column;
+align-items:center;justify-content:center;font-size:clamp(17px,5.4vw,25px);font-weight:800;color:#fff;cursor:pointer;background:transparent}
+.cell.empty{visibility:hidden}
+.cell.work{background:#2563eb}
+.cell.rest{background:#2e9e57}
+.cell.extra{background:#2563eb}
+.cell.hol{border-color:#d12a2a}
+.cell.we{border-color:#facc15}
+.cell.today{background:#fff;color:#000;font-size:clamp(18px,5.6vw,26px);transform:scale(1.12);z-index:1;box-shadow:0 5px 16px rgba(0,0,0,.4)}
+.cell.today.work,.cell.today.extra{box-shadow:inset 0 0 0 4px #2563eb,0 5px 16px rgba(0,0,0,.4)}
+.cell.today.rest{box-shadow:inset 0 0 0 4px #2e9e57,0 5px 16px rgba(0,0,0,.4)}
+.cell.sel{outline:3px solid var(--text);outline-offset:1px}
+.cell i{font-style:normal;font-size:clamp(7px,2.2vw,10px);font-weight:700;line-height:1;margin-top:1px;white-space:nowrap}
+.leg{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;font-size:13px;color:var(--muted)}
+.leg span:before{content:"";display:inline-block;width:14px;height:14px;border-radius:4px;margin-right:5px;vertical-align:-2px;background:var(--c);border:3px solid var(--b,var(--line))}
+.btn.extra{width:100%;margin-top:12px;border:2px solid #2563eb;color:#2563eb;background:transparent}
+.btn.extra.on{background:#2563eb;color:#fff}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:0;border-radius:999px;background:#2563eb;color:#fff;font-weight:700;font-size:15px;padding:9px 14px;cursor:pointer}
+.note{color:var(--muted);font-size:13px;margin:8px 0 0}
+.banner{background:#fff4c7;color:#5b4500;border-color:#f0d060;font-size:14px;cursor:pointer}
+[hidden]{display:none!important}
+details summary{cursor:pointer;font-weight:600}
+details p{color:var(--muted);font-size:14px;margin:8px 0}
+</style>
+</head>
+<body>
+<main>
+  <div class="card banner" id="chg" hidden></div>
+  <section class="card" aria-live="polite">
+    <div id="dt"></div><div id="wd"></div>
+    <div id="status" role="button" title="Нажмите, чтобы перейти к сегодняшнему дню"></div>
+    <div class="row"><b>Праздник</b><span id="hol"></span></div>
+    <div class="row"><b>Выходной</b><span id="off"></span></div>
+  </section>
+
+  <section class="card">
+    <h2>Календарь</h2>
+    <div class="nav">
+      <button class="btn" id="py" aria-label="Год назад">«</button>
+      <button class="btn" id="pm" aria-label="Месяц назад">‹</button>
+      <div class="ttl" id="ttl"></div>
+      <button class="btn" id="nm" aria-label="Месяц вперёд">›</button>
+      <button class="btn" id="ny" aria-label="Год вперёд">»</button>
+    </div>
+    <div class="gwrap" id="gwrap"><div class="grid" id="grid"></div></div>
+    <div class="leg">
+      <span style="--c:#2563eb">смена и подработка</span><span style="--c:#2e9e57">отдых</span>
+      <span style="--c:var(--card);--b:#d12a2a">красная рамка — праздник</span>
+      <span style="--c:var(--card);--b:#facc15">жёлтая рамка — суббота, воскресенье</span>
+      <em style="font-style:normal">белая крупная ячейка с чёрной цифрой — сегодня (цвет кольца — смена или отдых)</em>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Мои подработки</h2>
+    <div class="chips" id="chips"></div>
+    <button class="btn extra" id="xbtn"></button>
+    <p class="note">Выберите день отдыха в календаре — здесь появится кнопка. Нажмите на дату в списке, чтобы перейти к ней.</p>
+  </section>
+
+  <section class="card">
+    <details>
+      <summary>Настройка графика</summary>
+      <p>Если график «сдвинулся», укажите, кем вы являетесь сегодня — всё пересчитается.</p>
+      <label for="fs">Сегодня у меня</label>
+      <select id="fs">
+        <option value="0">Смена</option>
+        <option value="1">1-й день отдыха</option>
+        <option value="2">2-й день отдыха</option>
+        <option value="3">3-й день отдыха</option>
+      </select>
+      <label style="margin-top:16px">Праздники и переносы (производственный календарь РФ)</label>
+      <p class="note" id="calst"></p>
+      <button class="btn" id="calbtn" style="width:100%">Проверить обновления сейчас</button>
+    </details>
+  </section>
+</main>
+
+<script>
+var MON=["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
+var MONG=["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
+var WD=["понедельник","вторник","среда","четверг","пятница","суббота","воскресенье"];
+var WDS=["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
+var HOL={"1-1":"Новый год","1-2":"Новогодние каникулы","1-3":"Новогодние каникулы","1-4":"Новогодние каникулы",
+"1-5":"Новогодние каникулы","1-6":"Новогодние каникулы","1-7":"Рождество Христово","1-8":"Новогодние каникулы",
+"2-23":"День защитника Отечества","3-8":"Международный женский день","5-1":"Праздник Весны и Труда",
+"5-9":"День Победы","6-12":"День России","11-4":"День народного единства"};
+/* Ручные правки, если перенос выходных у правительства другой: "2026-12-31":"причина" */
+var EXTRA_OFF={}, WORK_WE={};
+var ANCHOR="2026-10-20"; /* дата, когда у вас смена */
+try{var a=localStorage.getItem("anchor");if(a)ANCHOR=a;}catch(e){}
+var EXTRA=[];try{EXTRA=JSON.parse(localStorage.getItem("extra")||"[]");}catch(e){}
+function saveExtra(){try{localStorage.setItem("extra",JSON.stringify(EXTRA));}catch(e){}}
+function isExtra(y,m,d){return EXTRA.indexOf(key(y,m,d))>-1;}
+var CAL={};try{CAL=JSON.parse(localStorage.getItem("cal")||"{}");}catch(e){}
+function calVal(y,m,d){var s=CAL[y];if(!s||s.length<365)return -1;var c=s.charAt(dn(y,m,d)-dn(y,1,1));return c===""?-1:+c;}
+
+function dn(y,m,d){return Math.round(Date.UTC(y,m-1,d)/864e5);}
+function fromDn(n){var t=new Date(n*864e5);return{y:t.getUTCFullYear(),m:t.getUTCMonth()+1,d:t.getUTCDate()};}
+function wday(y,m,d){return(new Date(Date.UTC(y,m-1,d)).getUTCDay()+6)%7;}
+function dim(y,m){return new Date(Date.UTC(y,m,0)).getUTCDate();}
+function key(y,m,d){return y+"-"+("0"+m).slice(-2)+"-"+("0"+d).slice(-2);}
+function anchorN(){var p=ANCHOR.split("-");return dn(+p[0],+p[1],+p[2]);}
+function pos(y,m,d){return(((dn(y,m,d)-anchorN())%4)+4)%4;}
+
+var moved={};
+function transfers(y){
+  if(moved[y])return moved[y];
+  var r={};
+  Object.keys(HOL).forEach(function(k){
+    var p=k.split("-"),m=+p[0],d=+p[1];
+    if(wday(y,m,d)>=5){
+      var n=dn(y,m,d)+1;
+      for(;;){var c=fromDn(n);
+        if(wday(c.y,c.m,c.d)<5&&!HOL[c.m+"-"+c.d]&&!r[n])break;n++;}
+      r[n]="перенос с "+d+" "+MONG[m-1]+" ("+HOL[k]+")";
+    }
+  });
+  return moved[y]=r;
+}
+function dayInfo(y,m,d){
+  var h=HOL[m+"-"+d],mv=EXTRA_OFF[key(y,m,d)]||transfers(y)[dn(y,m,d)],w=wday(y,m,d),v=calVal(y,m,d);
+  if(v>=0){
+    if(v===1)return h?{off:true,hol:h,txt:"да, нерабочий праздничный день"}:(w>=5?{off:true,hol:"нет",txt:"да, "+WD[w]}:{off:true,hol:"нет",txt:"да, нерабочий день (перенос выходного)"});
+    return{off:false,hol:"нет",txt:w>=5?"нет, рабочий "+WD[w]+" (перенос выходного)":"нет, обычный рабочий день"};
+  }
+  if(h)return{off:true,hol:h,txt:"да, нерабочий праздничный день"};
+  if(mv)return{off:true,hol:"нет",txt:"да, "+mv};
+  if(WORK_WE[key(y,m,d)])return{off:false,hol:"нет",txt:"нет, "+WORK_WE[key(y,m,d)]};
+  if(w>=5)return{off:true,hol:"нет",txt:"да, "+WD[w]};
+  return{off:false,hol:"нет",txt:"нет, обычный будний день"};
+}
+
+var t0=new Date(),TODAY={y:t0.getFullYear(),m:t0.getMonth()+1,d:t0.getDate()};
+var sel={y:TODAY.y,m:TODAY.m,d:TODAY.d},view={y:TODAY.y,m:TODAY.m};
+var $=function(i){return document.getElementById(i);};
+
+function render(){
+  var p=pos(sel.y,sel.m,sel.d),inf=dayInfo(sel.y,sel.m,sel.d),w=wday(sel.y,sel.m,sel.d);
+  $("dt").textContent=sel.d+" "+MONG[sel.m-1]+" "+sel.y;
+  $("wd").textContent=WD[w].charAt(0).toUpperCase()+WD[w].slice(1);
+  var st=$("status"),ex=p!==0&&isExtra(sel.y,sel.m,sel.d);
+  if(p===0){st.className="work";st.innerHTML="Работаю<small>смена, сутки</small>";}
+  else if(ex){st.className="extra";st.innerHTML="Работаю<small>подработка, "+p+"-й день отдыха</small>";}
+  else{st.className="rest";st.innerHTML="Отдыхаю<small>"+p+"-й день отдыха из 3</small>";}
+  var kd=inf.off?((inf.hol!=="нет"||w<5)?"hol":"we"):"";
+  $("hol").textContent=inf.hol;$("hol").className=inf.hol!=="нет"?"c-hol":"";
+  $("off").textContent=inf.txt;$("off").className=kd==="hol"?"c-hol":(kd==="we"?"c-we":"");
+  $("wd").className=w>=5?"c-we":"";
+  var xb=$("xbtn");
+  if(p===0){xb.style.display="none";}
+  else{xb.style.display="";xb.className="btn extra"+(ex?" on":"");xb.textContent=ex?"Убрать подработку":"Добавить подработку на "+sel.d+" "+MONG[sel.m-1];}
+  var tp=pos(TODAY.y,TODAY.m,TODAY.d);$("fs").value=tp;
+  drawChips();
+  drawCal();
+}
+function drawCal(){
+  $("ttl").textContent=MON[view.m-1]+" "+view.y;
+  var h="";WDS.forEach(function(n,i){h+='<div class="hd'+(i>4?" we":"")+'">'+n+'</div>';});
+  var f=wday(view.y,view.m,1),n=dim(view.y,view.m),i,d;
+  for(i=0;i<f;i++)h+='<div class="cell empty"></div>';
+  for(d=1;d<=n;d++){
+    var p=pos(view.y,view.m,d),inf=dayInfo(view.y,view.m,d),
+        kind=inf.off?((inf.hol!=="нет"||wday(view.y,view.m,d)<5)?"hol":"we"):"",
+        c="cell "+(p===0?"work":(isExtra(view.y,view.m,d)?"extra":"rest"))+(kind?" "+kind:"");
+    if(view.y===TODAY.y&&view.m===TODAY.m&&d===TODAY.d)c+=" today";
+    if(view.y===sel.y&&view.m===sel.m&&d===sel.d)c+=" sel";
+    h+='<button class="'+c+'" data-d="'+d+'" aria-label="'+d+' '+MONG[view.m-1]+(p===0?', смена':(isExtra(view.y,view.m,d)?', подработка':', отдых'))+'">'+d+(p===0?"<i>СМЕНА</i>":(isExtra(view.y,view.m,d)?"<i>ПОДР.</i>":""))+'</button>';
+  }
+  $("grid").innerHTML=h;
+}
+function drawChips(){
+  var h="";
+  EXTRA.slice().sort().forEach(function(k){var q=k.split("-");
+    h+='<button class="chip" data-k="'+k+'">'+(+q[2])+" "+MONG[+q[1]-1].slice(0,3)+(+q[0]!==TODAY.y?" "+q[0]:"")+'</button>';});
+  $("chips").innerHTML=h||'<span class="note">Пока нет</span>';
+}
+function setSel(y,m,d){var mx=dim(y,m);sel={y:y,m:m,d:Math.min(d,mx)};view={y:sel.y,m:sel.m};render();}
+function shiftView(k){
+  var wrap=$("gwrap"),g=$("grid"),snap=null;
+  if(Math.abs(k)===1&&g.firstChild&&g.cloneNode){
+    snap=g.cloneNode(true);snap.removeAttribute("id");
+    snap.className="grid snap "+(k>0?"fn":"fp");
+    wrap.appendChild(snap);
+  }
+  var t=view.m-1+k;view={y:view.y+Math.floor(t/12),m:((t%12)+12)%12+1};
+  drawCal();
+  if(snap){
+    var rm=function(){if(snap.parentNode)snap.parentNode.removeChild(snap);};
+    snap.addEventListener("animationend",rm);setTimeout(rm,800);
+  }
+}
+function shiftDay(k){var c=fromDn(dn(sel.y,sel.m,sel.d)+k);setSel(c.y,c.m,c.d);}
+
+$("grid").addEventListener("click",function(e){var b=e.target.closest(".cell");if(b&&b.dataset.d)setSel(view.y,view.m,+b.dataset.d);});
+$("pm").onclick=function(){shiftView(-1);};$("nm").onclick=function(){shiftView(1);};
+$("py").onclick=function(){shiftView(-12);};$("ny").onclick=function(){shiftView(12);};
+$("fs").onchange=function(){
+  var k=+$("fs").value,a=fromDn(dn(TODAY.y,TODAY.m,TODAY.d)-k);
+  ANCHOR=key(a.y,a.m,a.d);try{localStorage.setItem("anchor",ANCHOR);}catch(e){}
+  render();
+};
+var CALTS=0;try{CALTS=+localStorage.getItem('calts')||0;}catch(e){}
+function saveCal(){try{localStorage.setItem('cal',JSON.stringify(CAL));localStorage.setItem('calts',String(CALTS));}catch(e){}}
+function leap(y){return y%4===0&&(y%100!==0||y%400===0);}
+function fetchYear(y){
+  return fetch('https://isdayoff.ru/api/getdata?year='+y).then(function(r){return r.text();}).then(function(t){
+    t=t.trim();
+    if(t.length===(leap(y)?366:365)&&/^[0-4]+$/.test(t))return t;
+    throw new Error('bad');
+  });
+}
+function calStatus(extra){
+  var s;
+  if(!CALTS){s='Пока используются только встроенные праздники. Подключитесь к интернету и нажмите кнопку ниже.';}
+  else{var d=new Date(CALTS);s='Обновлено: '+d.getDate()+'.'+('0'+(d.getMonth()+1)).slice(-2)+'.'+d.getFullYear()+'. Приложение само сверяется с производственным календарём РФ (isdayoff.ru) не чаще раза в сутки.';}
+  $('calst').textContent=s+(extra?' '+extra:'');
+}
+function checkCal(force){
+  if(!window.fetch)return;
+  if(!force&&Date.now()-CALTS<864e5)return;
+  var ys=[TODAY.y,TODAY.y+1],changes=[],ok=0,done=0,t0n=dn(TODAY.y,TODAY.m,TODAY.d);
+  ys.forEach(function(y){
+    fetchYear(y).then(function(t){
+      var old=CAL[y];
+      if(old&&old!==t){for(var i=0;i<t.length;i++){if(old.charAt(i)!==t.charAt(i)&&dn(y,1,1)+i>=t0n){var f=fromDn(dn(y,1,1)+i);changes.push(f.d+' '+MONG[f.m-1]+(t.charAt(i)==='1'?' — теперь нерабочий':' — теперь рабочий'));}}}
+      CAL[y]=t;ok++;
+    }).catch(function(){}).then(function(){
+      if(++done<ys.length)return;
+      if(ok){CALTS=Date.now();saveCal();}
+      if(changes.length){var b=$('chg');b.textContent='Производственный календарь изменился: '+changes.slice(0,6).join('; ')+(changes.length>6?' и ещё '+(changes.length-6):'')+'. График обновлён (нажмите, чтобы скрыть).';b.hidden=false;}
+      render();
+      calStatus(ok?'':'Не удалось проверить: нет интернета. Используются сохранённые данные.');
+    });
+  });
+}
+$('calbtn').onclick=function(){checkCal(true);};
+$('chg').onclick=function(){this.hidden=true;};
+document.addEventListener('visibilitychange',function(){if(!document.hidden)checkCal(false);});
+setInterval(function(){checkCal(false);},36e5);
+var tx=0,ty=0,tt=0;
+$("grid").addEventListener("touchstart",function(e){var t=e.changedTouches[0];tx=t.clientX;ty=t.clientY;tt=Date.now();},{passive:true});
+$("grid").addEventListener("touchend",function(e){
+  var t=e.changedTouches[0],dx=t.clientX-tx,dy=t.clientY-ty;
+  if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5&&Date.now()-tt<800)shiftView(dx<0?1:-1);
+},{passive:true});
+$("status").onclick=function(){setSel(TODAY.y,TODAY.m,TODAY.d);};
+$("xbtn").onclick=function(){
+  var k=key(sel.y,sel.m,sel.d),i=EXTRA.indexOf(k);
+  if(i>-1)EXTRA.splice(i,1);else EXTRA.push(k);
+  saveExtra();render();
+};
+$("chips").addEventListener("click",function(e){var b=e.target.closest(".chip");if(b){var q=b.dataset.k.split("-");setSel(+q[0],+q[1],+q[2]);window.scrollTo(0,0);}});
+document.addEventListener("keydown",function(e){
+  if(/SELECT|INPUT/.test(e.target.tagName))return;
+  var k={ArrowLeft:-1,ArrowRight:1,ArrowUp:-7,ArrowDown:7}[e.key];
+  if(k){e.preventDefault();shiftDay(k);}
+});
+render();
+calStatus('');checkCal(false);
+</script>
+</body>
+</html>
