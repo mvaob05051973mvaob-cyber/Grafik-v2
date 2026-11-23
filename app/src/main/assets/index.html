@@ -7,11 +7,11 @@
 <style>
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
 --bg:#f3f5f8;--card:#fff;--text:#1b2430;--muted:#64707f;--line:#dfe4ea;
---work:#fbd0d0;--work-t:#8f1d1d;--rest:#d5f1dd;--rest-t:#1a6b36;--hol:#d12a2a;--sel:#2563eb;--today:#f59e0b;--yel:#c79100;color-scheme:light}
+--work:#fbd0d0;--work-t:#8f1d1d;--rest:#d5f1dd;--rest-t:#1a6b36;--hol:#d12a2a;--sel:#2563eb;--yel:#d12a2a;color-scheme:light}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10151c;--card:#1a212b;--text:#eef2f7;--muted:#93a0b0;--line:#2c3643;
---work:#5a2326;--work-t:#ffc9c9;--rest:#1d4a2e;--rest-t:#b8f0ca;--hol:#ff7b7b;--sel:#6c9bff;--today:#fbbf24;--yel:#facc15;color-scheme:dark}}
+--work:#5a2326;--work-t:#ffc9c9;--rest:#1d4a2e;--rest-t:#b8f0ca;--hol:#ff7b7b;--sel:#6c9bff;--yel:#ff7b7b;color-scheme:dark}}
 :root[data-theme="dark"]{--bg:#10151c;--card:#1a212b;--text:#eef2f7;--muted:#93a0b0;--line:#2c3643;
---work:#5a2326;--work-t:#ffc9c9;--rest:#1d4a2e;--rest-t:#b8f0ca;--hol:#ff7b7b;--sel:#6c9bff;--today:#fbbf24;--yel:#facc15;color-scheme:dark}
+--work:#5a2326;--work-t:#ffc9c9;--rest:#1d4a2e;--rest-t:#b8f0ca;--hol:#ff7b7b;--sel:#6c9bff;--yel:#ff7b7b;color-scheme:dark}
 *,*:before,*:after{box-sizing:inherit}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
@@ -58,7 +58,7 @@ align-items:center;justify-content:center;font-size:clamp(17px,5.4vw,25px);font-
 .cell.rest{background:#2e9e57}
 .cell.extra{background:#2563eb}
 .cell.hol{border-color:#d12a2a}
-.cell.we{border-color:#facc15}
+.cell.we{border-color:#d12a2a}
 .cell.today{background:#fff;color:#000;font-size:clamp(18px,5.6vw,26px);transform:scale(1.12);z-index:1;box-shadow:0 5px 16px rgba(0,0,0,.4)}
 .cell.today.work,.cell.today.extra{box-shadow:inset 0 0 0 4px #2563eb,0 5px 16px rgba(0,0,0,.4)}
 .cell.today.rest{box-shadow:inset 0 0 0 4px #2e9e57,0 5px 16px rgba(0,0,0,.4)}
@@ -71,7 +71,7 @@ align-items:center;justify-content:center;font-size:clamp(17px,5.4vw,25px);font-
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chip{border:0;border-radius:999px;background:#2563eb;color:#fff;font-weight:700;font-size:15px;padding:9px 14px;cursor:pointer}
 .note{color:var(--muted);font-size:13px;margin:8px 0 0}
-.banner{background:#fff4c7;color:#5b4500;border-color:#f0d060;font-size:14px;cursor:pointer}
+.banner{background:#ffe5e5;color:#7a1212;border-color:#d12a2a;font-size:14px;cursor:pointer}
 [hidden]{display:none!important}
 details summary{cursor:pointer;font-weight:600}
 details p{color:var(--muted);font-size:14px;margin:8px 0}
@@ -99,8 +99,7 @@ details p{color:var(--muted);font-size:14px;margin:8px 0}
     <div class="gwrap" id="gwrap"><div class="grid" id="grid"></div></div>
     <div class="leg">
       <span style="--c:#2563eb">смена и подработка</span><span style="--c:#2e9e57">отдых</span>
-      <span style="--c:var(--card);--b:#d12a2a">красная рамка — праздник</span>
-      <span style="--c:var(--card);--b:#facc15">жёлтая рамка — суббота, воскресенье</span>
+      <span style="--c:var(--card);--b:#d12a2a">красная рамка — праздник, суббота, воскресенье</span>
       <em style="font-style:normal">белая крупная ячейка с чёрной цифрой — сегодня (цвет кольца — смена или отдых)</em>
     </div>
   </section>
@@ -140,7 +139,14 @@ var HOL={"1-1":"Новый год","1-2":"Новогодние каникулы"
 "2-23":"День защитника Отечества","3-8":"Международный женский день","5-1":"Праздник Весны и Труда",
 "5-9":"День Победы","6-12":"День России","11-4":"День народного единства"};
 /* Ручные правки, если перенос выходных у правительства другой: "2026-12-31":"причина" */
-var EXTRA_OFF={}, WORK_WE={};
+/* Официальные переносы (Постановления Правительства РФ от 24.09.2025 № 1466 и от 17.09.2026 № 1187).
+   Для этих лет встроенный расчёт переносов отключён: берутся только даты ниже. */
+var OFFICIAL_YEARS={2026:1,2027:1};
+var EXTRA_OFF={
+ "2026-01-09":"перенос с 3 января","2026-03-09":"перенос с 8 марта","2026-05-11":"перенос с 9 мая","2026-12-31":"перенос с 4 января",
+ "2027-02-22":"перенос с 20 февраля","2027-05-03":"перенос с 1 мая","2027-05-10":"перенос с 9 мая","2027-06-14":"перенос с 12 июня",
+ "2027-11-05":"перенос с 2 января","2027-12-31":"перенос с 3 января"};
+var WORK_WE={"2027-02-20":"рабочая суббота (выходной перенесён на 22 февраля)"};
 var ANCHOR="2026-10-20"; /* дата, когда у вас смена */
 try{var a=localStorage.getItem("anchor");if(a)ANCHOR=a;}catch(e){}
 var EXTRA=[];try{EXTRA=JSON.parse(localStorage.getItem("extra")||"[]");}catch(e){}
@@ -160,6 +166,7 @@ function pos(y,m,d){return(((dn(y,m,d)-anchorN())%4)+4)%4;}
 var moved={};
 function transfers(y){
   if(moved[y])return moved[y];
+  if(OFFICIAL_YEARS[y])return moved[y]={};
   var r={};
   Object.keys(HOL).forEach(function(k){
     var p=k.split("-"),m=+p[0],d=+p[1];
